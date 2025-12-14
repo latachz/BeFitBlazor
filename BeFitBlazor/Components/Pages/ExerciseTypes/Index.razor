@@ -1,0 +1,68 @@
+@page "/exercise-types"
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Typy ćwiczeń</PageTitle>
+
+<h1 class="title">Typy ćwiczeń</h1>
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <p class="has-text-right">
+            <a href="/exercise-types/create" class="button is-link">Dodaj nowy typ ćwiczenia</a>
+        </p>
+    </Authorized>
+</AuthorizeView>
+
+@if (exerciseTypes == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else if (!exerciseTypes.Any())
+{
+    <p><em>Brak typów ćwiczeń.</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nazwa ćwiczenia</th>
+                <th>Opis</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in exerciseTypes)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Description</td>
+                    <td>
+                        <a href="/exercise-types/details/@item.Id" class="button is-primary">Szczegóły</a>
+                        <AuthorizeView Roles="Admin">
+                            <Authorized>
+                                <a href="/exercise-types/edit/@item.Id" class="button is-warning">Edytuj</a>
+                                <a href="/exercise-types/delete/@item.Id" class="button is-danger">Usuń</a>
+                            </Authorized>
+                        </AuthorizeView>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ExerciseTypeDTO>? exerciseTypes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        exerciseTypes = await Context.ExerciseType
+            .Select(e => new ExerciseTypeDTO(e))
+            .ToListAsync();
+    }
+}
+

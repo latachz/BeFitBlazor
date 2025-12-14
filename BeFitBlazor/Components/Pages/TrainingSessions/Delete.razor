@@ -1,0 +1,92 @@
+@page "/training-sessions/delete/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@using BeFitBlazor.DTOs
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Usuń sesję treningową</PageTitle>
+
+<h1 class="title">Usuń</h1>
+
+@if (trainingSession == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else
+{
+    <div class="message is-danger">
+        <div class="message-header">
+            <p>Czy na pewno chcesz usunąć tę sesję treningową?</p>
+        </div>
+        <div class="message-body">
+            <dl class="columns is-multiline">
+                <dt class="column is-2">Data</dt>
+                <dd class="column is-10">@trainingSession.Date.ToString("yyyy-MM-dd")</dd>
+                <dt class="column is-2">Czas rozpoczęcia</dt>
+                <dd class="column is-10">@trainingSession.StartTime.ToString(@"hh\:mm")</dd>
+                <dt class="column is-2">Czas zakończenia</dt>
+                <dd class="column is-10">@trainingSession.EndTime.ToString(@"hh\:mm")</dd>
+                <dt class="column is-2">Czas trwania</dt>
+                <dd class="column is-10">@trainingSession.Duration.ToString(@"hh\:mm")</dd>
+            </dl>
+            <form method="post" @onsubmit="HandleDelete" class="has-text-centered">
+                <input type="hidden" value="@trainingSession.Id" />
+                <button type="submit" class="button is-danger">Usuń</button>
+                <a href="/training-sessions" class="button is-link">Powrót do listy</a>
+            </form>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private TrainingSession? trainingSessionEntity;
+    private TrainingSessionDTO? trainingSession;
+    private string? userId;
+
+    async Task<string?> getUserId()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return userId;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        userId = await getUserId();
+
+        if (userId != null)
+        {
+            trainingSessionEntity = await Context.TrainingSession
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(m => m.Id == Id && m.UserId == userId);
+
+            if (trainingSessionEntity == null)
+            {
+                Navigation.NavigateTo("/training-sessions");
+            }
+            else
+            {
+                trainingSession = new TrainingSessionDTO(trainingSessionEntity);
+            }
+        }
+    }
+
+    private async Task HandleDelete()
+    {
+        if (trainingSessionEntity != null)
+        {
+            Context.TrainingSession.Remove(trainingSessionEntity);
+            await Context.SaveChangesAsync();
+        }
+        Navigation.NavigateTo("/training-sessions");
+    }
+}
+

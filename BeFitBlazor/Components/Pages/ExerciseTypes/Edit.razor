@@ -1,0 +1,71 @@
+@page "/exercise-types/edit/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+<PageTitle>Edytuj typ ćwiczenia</PageTitle>
+
+<h1 class="title">Edytuj typ ćwiczenia</h1>
+
+@if (exerciseType == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else
+{
+    <EditForm Model="@exerciseType" OnValidSubmit="@HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="message is-danger" />
+
+        <div class="field">
+            <label class="label">Nazwa ćwiczenia</label>
+            <div class="control">
+                <InputText @bind-Value="exerciseType.Name" class="input" />
+                <ValidationMessage For="@(() => exerciseType.Name)" class="help is-danger" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Opis</label>
+            <div class="control">
+                <InputTextArea @bind-Value="exerciseType.Description" class="textarea" rows="4" />
+                <ValidationMessage For="@(() => exerciseType.Description)" class="help is-danger" />
+            </div>
+        </div>
+
+        <div class="field has-text-centered">
+            <div class="control">
+                <button type="submit" class="button is-success">Zapisz</button>
+                <a href="/exercise-types" class="button is-link">Powrót do listy</a>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ExerciseType? exerciseType;
+
+    protected override async Task OnInitializedAsync()
+    {
+        exerciseType = await Context.ExerciseType.FindAsync(Id);
+        if (exerciseType == null)
+        {
+            Navigation.NavigateTo("/exercise-types");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        Context.Update(exerciseType!);
+        await Context.SaveChangesAsync();
+        Navigation.NavigateTo("/exercise-types");
+    }
+}
+

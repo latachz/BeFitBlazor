@@ -1,0 +1,145 @@
+@page "/exercise-executions/edit/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Edytuj wykonane ćwiczenie</PageTitle>
+
+<h1 class="title">Edytuj wykonane ćwiczenie</h1>
+
+@if (exerciseExecution == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else
+{
+    <EditForm Model="@exerciseExecution" OnValidSubmit="@HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="message is-danger" />
+
+        <div class="field">
+            <label class="label">Typ ćwiczenia</label>
+            <div class="control">
+                <InputSelect @bind-Value="exerciseExecution.ExerciseTypeId" class="select">
+                    <option value="0">Wybierz typ ćwiczenia</option>
+                    @foreach (var exerciseType in exerciseTypes)
+                    {
+                        <option value="@exerciseType.Id">@exerciseType.Display</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => exerciseExecution.ExerciseTypeId)" class="help is-danger" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Sesja treningowa</label>
+            <div class="control">
+                <InputSelect @bind-Value="exerciseExecution.TrainingSessionId" class="select">
+                    <option value="0">Wybierz sesję treningową</option>
+                    @foreach (var session in trainingSessions)
+                    {
+                        <option value="@session.Id">@session.Display</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => exerciseExecution.TrainingSessionId)" class="help is-danger" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Obciążenie (kg)</label>
+            <div class="control">
+                <InputNumber @bind-Value="exerciseExecution.Weight" class="input" step="0.01" />
+                <ValidationMessage For="@(() => exerciseExecution.Weight)" class="help is-danger" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Liczba serii</label>
+            <div class="control">
+                <InputNumber @bind-Value="exerciseExecution.NumberOfSets" class="input" />
+                <ValidationMessage For="@(() => exerciseExecution.NumberOfSets)" class="help is-danger" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Liczba powtórzeń w serii</label>
+            <div class="control">
+                <InputNumber @bind-Value="exerciseExecution.RepetitionsPerSet" class="input" />
+                <ValidationMessage For="@(() => exerciseExecution.RepetitionsPerSet)" class="help is-danger" />
+            </div>
+        </div>
+
+        <div class="field has-text-centered">
+            <div class="control">
+                <button type="submit" class="button is-success">Zapisz</button>
+                <a href="/exercise-executions" class="button is-link">Powrót do listy</a>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ExerciseExecution? exerciseExecution;
+    private List<(int Id, string Display)> exerciseTypes = new();
+    private List<(int Id, string Display)> trainingSessions = new();
+    private string? userId;
+
+    async Task<string?> getUserId()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return userId;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        userId = await getUserId();
+
+        if (userId != null)
+        {
+            exerciseExecution = await Context.ExerciseExecution
+                .Include(e => e.TrainingSession)
+                .FirstOrDefaultAsync(m => m.Id == Id && m.TrainingSession.UserId == userId);
+
+            if (exerciseExecution == null)
+            {
+                Navigation.NavigateTo("/exercise-executions");
+            }
+            else
+            {
+                var types = await Context.ExerciseType.ToListAsync();
+                exerciseTypes = types.Select(t => (
+                    t.Id,
+                    Display: t.Name
+                )).ToList();
+
+                var sessions = await Context.TrainingSession
+                    .Where(t => t.UserId == userId)
+                    .OrderByDescending(t => t.Date)
+                    .ToListAsync();
+                
+                trainingSessions = sessions.Select(t => (
+                    t.Id, 
+                    Display: $"{t.Date:yyyy-MM-dd} {t.StartTime:hh\\:mm} - {t.EndTime:hh\\:mm}"
+                )).ToList();
+            }
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        Context.Update(exerciseExecution!);
+        await Context.SaveChangesAsync();
+        Navigation.NavigateTo("/exercise-executions");
+    }
+}
+

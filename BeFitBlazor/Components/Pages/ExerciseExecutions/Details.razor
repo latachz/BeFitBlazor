@@ -1,0 +1,82 @@
+@page "/exercise-executions/details/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Szczegóły wykonanego ćwiczenia</PageTitle>
+
+<h1 class="title">Szczegóły wykonanego ćwiczenia</h1>
+
+@if (exerciseExecution == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else
+{
+    <div>
+        <h4>Wykonane ćwiczenie</h4>
+        <hr />
+        <dl class="columns is-multiline">
+            <dt class="column is-2">Typ ćwiczenia</dt>
+            <dd class="column is-10">@exerciseExecution.ExerciseTypeName</dd>
+            <dt class="column is-2">Sesja treningowa</dt>
+            <dd class="column is-10">@exerciseExecution.TrainingSessionDisplay</dd>
+            <dt class="column is-2">Obciążenie (kg)</dt>
+            <dd class="column is-10">@exerciseExecution.Weight.ToString("F2")</dd>
+            <dt class="column is-2">Liczba serii</dt>
+            <dd class="column is-10">@exerciseExecution.NumberOfSets</dd>
+            <dt class="column is-2">Liczba powtórzeń w serii</dt>
+            <dd class="column is-10">@exerciseExecution.RepetitionsPerSet</dd>
+            <dt class="column is-2">Łączna liczba powtórzeń</dt>
+            <dd class="column is-10">@exerciseExecution.TotalRepetitions</dd>
+        </dl>
+    </div>
+    <div class="has-text-centered">
+        <a href="/exercise-executions/edit/@exerciseExecution.Id" class="button is-warning">Edytuj</a>
+        <a href="/exercise-executions" class="button is-link">Powrót do listy</a>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ExerciseExecutionDTO? exerciseExecution;
+    private string? userId;
+
+    async Task<string?> getUserId()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return userId;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        userId = await getUserId();
+
+        if (userId != null)
+        {
+            var executionEntity = await Context.ExerciseExecution
+                .Include(e => e.ExerciseType)
+                .Include(e => e.TrainingSession)
+                .Where(e => e.Id == Id && e.TrainingSession.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (executionEntity == null)
+            {
+                Navigation.NavigateTo("/exercise-executions");
+            }
+            else
+            {
+                exerciseExecution = new ExerciseExecutionDTO(executionEntity);
+            }
+        }
+    }
+}
+

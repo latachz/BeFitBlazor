@@ -1,0 +1,113 @@
+@page "/training-sessions/details/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Szczegóły sesji treningowej</PageTitle>
+
+<h1 class="title">Szczegóły sesji treningowej</h1>
+
+@if (session == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else
+{
+    <div>
+        <h4>Sesja treningowa</h4>
+        <hr />
+        <dl class="columns is-multiline">
+            <dt class="column is-2">Data</dt>
+            <dd class="column is-10">@session.Date.ToString("yyyy-MM-dd")</dd>
+            <dt class="column is-2">Czas rozpoczęcia</dt>
+            <dd class="column is-10">@session.StartTime.ToString(@"hh\:mm")</dd>
+            <dt class="column is-2">Czas zakończenia</dt>
+            <dd class="column is-10">@session.EndTime.ToString(@"hh\:mm")</dd>
+            <dt class="column is-2">Czas trwania</dt>
+            <dd class="column is-10">@session.Duration.ToString(@"hh\:mm")</dd>
+        </dl>
+    </div>
+
+    <div>
+        <h4>Wykonane ćwiczenia</h4>
+        @if (session.ExerciseExecutions.Any())
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Typ ćwiczenia</th>
+                        <th>Obciążenie (kg)</th>
+                        <th>Liczba serii</th>
+                        <th>Liczba powtórzeń w serii</th>
+                        <th>Łączna liczba powtórzeń</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var execution in session.ExerciseExecutions)
+                    {
+                        <tr>
+                            <td>@execution.ExerciseTypeName</td>
+                            <td>@execution.Weight.ToString("F2")</td>
+                            <td>@execution.NumberOfSets</td>
+                            <td>@execution.RepetitionsPerSet</td>
+                            <td>@execution.TotalRepetitions</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p><em>Brak wykonanych ćwiczeń w tej sesji.</em></p>
+        }
+    </div>
+
+    <div class="has-text-centered">
+        <a href="/training-sessions/edit/@session.Id" class="button is-warning">Edytuj</a>
+        <a href="/training-sessions" class="button is-link">Powrót do listy</a>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private TrainingSessionDTO? session;
+    private string? userId;
+
+    async Task<string?> getUserId()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return userId;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        userId = await getUserId();
+
+        if (userId != null)
+        {
+            var trainingSessionEntity = await Context.TrainingSession
+                .Include(t => t.User)
+                .Include(t => t.ExerciseExecutions)
+                    .ThenInclude(e => e.ExerciseType)
+                .FirstOrDefaultAsync(m => m.Id == Id && m.UserId == userId);
+
+            if (trainingSessionEntity == null)
+            {
+                Navigation.NavigateTo("/training-sessions");
+            }
+            else
+            {
+                session = new TrainingSessionDTO(trainingSessionEntity);
+            }
+        }
+    }
+}
+

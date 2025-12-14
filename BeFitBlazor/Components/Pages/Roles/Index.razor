@@ -1,0 +1,59 @@
+@page "/roles"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@inject ApplicationDbContext Context
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Role</PageTitle>
+
+<h1 class="title">Zarządzanie rolami</h1>
+
+@if (message != null)
+{
+    <div class="message is-info">
+        <div class="message-body">
+            @message
+        </div>
+    </div>
+}
+
+@code {
+    private string? message;
+    private string? userId;
+
+    async Task<string?> getUserId()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return userId;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        userId = await getUserId();
+
+        if (userId != null)
+        {
+            var users = Context.Users;
+            if (users.Count() == 1)
+            {
+                var me = await UserManager.FindByIdAsync(userId);
+                if (me != null)
+                {
+                    await UserManager.AddToRoleAsync(me, "Admin");
+                    message = "Rola Admin została przypisana do pierwszego użytkownika.";
+                }
+            }
+            else
+            {
+                message = $"Liczba użytkowników: {users.Count()}";
+            }
+        }
+    }
+}
+

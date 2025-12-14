@@ -1,0 +1,126 @@
+@page "/training-sessions/edit/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Edytuj sesję treningową</PageTitle>
+
+<h1 class="title">Edytuj sesję treningową</h1>
+
+@if (trainingSession == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else
+{
+    <EditForm Model="@trainingSession" OnValidSubmit="@HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="message is-danger" />
+
+        <div class="field">
+            <label class="label">Data</label>
+            <div class="control">
+                <InputDate @bind-Value="trainingSession.Date" class="input" />
+                <ValidationMessage For="@(() => trainingSession.Date)" class="help is-danger" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Czas rozpoczęcia</label>
+            <div class="control">
+                <InputText @bind-Value="startTimeString" class="input" type="time" />
+                <ValidationMessage For="@(() => trainingSession.StartTime)" class="help is-danger" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="label">Czas zakończenia</label>
+            <div class="control">
+                <InputText @bind-Value="endTimeString" class="input" type="time" />
+                <ValidationMessage For="@(() => trainingSession.EndTime)" class="help is-danger" />
+                @if (hasTimeError)
+                {
+                    <span class="help is-danger">Czas zakończenia musi być późniejszy niż czas rozpoczęcia</span>
+                }
+            </div>
+        </div>
+
+        <div class="field has-text-centered">
+            <div class="control">
+                <button type="submit" class="button is-success">Zapisz</button>
+                <a href="/training-sessions" class="button is-link">Powrót do listy</a>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private TrainingSession? trainingSession;
+    private string startTimeString = "00:00";
+    private string endTimeString = "00:00";
+    private bool hasTimeError = false;
+    private string? userId;
+
+    async Task<string?> getUserId()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return userId;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        userId = await getUserId();
+
+        if (userId != null)
+        {
+            trainingSession = await Context.TrainingSession
+                .FirstOrDefaultAsync(m => m.Id == Id && m.UserId == userId);
+
+            if (trainingSession == null)
+            {
+                Navigation.NavigateTo("/training-sessions");
+            }
+            else
+            {
+                startTimeString = trainingSession.StartTime.ToString(@"hh\:mm");
+                endTimeString = trainingSession.EndTime.ToString(@"hh\:mm");
+            }
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        hasTimeError = false;
+
+        if (TimeSpan.TryParse(startTimeString, out var startTime))
+        {
+            trainingSession!.StartTime = startTime;
+        }
+
+        if (TimeSpan.TryParse(endTimeString, out var endTime))
+        {
+            trainingSession!.EndTime = endTime;
+        }
+
+        if (trainingSession!.EndTime <= trainingSession.StartTime)
+        {
+            hasTimeError = true;
+            return;
+        }
+
+        Context.Update(trainingSession);
+        await Context.SaveChangesAsync();
+        Navigation.NavigateTo("/training-sessions");
+    }
+}
+

@@ -1,0 +1,101 @@
+@page "/statistics"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@inject ApplicationDbContext Context
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Statystyki</PageTitle>
+
+<h1 class="title">Moje statystyki treningowe</h1>
+<p class="subtitle">Statystyki z ostatnich 4 tygodni</p>
+
+@if (statistics == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else if (!statistics.Any())
+{
+    <div class="message is-info">
+        <div class="message-body">
+            Brak danych statystycznych z ostatnich 4 tygodni.
+        </div>
+    </div>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Typ ćwiczenia</th>
+                <th>Liczba wykonanych sesji</th>
+                <th>Łączna liczba powtórzeń</th>
+                <th>Średnie obciążenie (kg)</th>
+                <th>Maksymalne obciążenie (kg)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var stat in statistics)
+            {
+                <tr>
+                    <td>@stat.ExerciseTypeName</td>
+                    <td>@stat.TimesPerformed</td>
+                    <td>@stat.TotalRepetitions</td>
+                    <td>@stat.AverageWeight.ToString("F2")</td>
+                    <td>@stat.MaxWeight.ToString("F2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<StatisticsDTO>? statistics;
+    private string? userId;
+
+    async Task<string?> getUserId()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return userId;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        userId = await getUserId();
+
+        if (userId != null)
+        {
+            var fourWeeksAgo = DateTime.Today.AddDays(-28);
+
+            var stats = await Context.ExerciseExecution
+                .Include(e => e.ExerciseType)
+                .Include(e => e.TrainingSession)
+                .Where(e => e.TrainingSession.UserId == userId && 
+                           e.TrainingSession.Date.Date >= fourWeeksAgo)
+                .GroupBy(e => e.ExerciseType)
+                .Select(g => new
+                {
+                    ExerciseType = g.Key,
+                    TimesPerformed = g.Select(e => e.TrainingSessionId).Distinct().Count(),
+                    TotalRepetitions = g.Sum(e => e.NumberOfSets * e.RepetitionsPerSet),
+                    AverageWeight = g.Average(e => (double?)e.Weight) ?? 0,
+                    MaxWeight = g.Max(e => (double?)e.Weight) ?? 0
+                })
+                .OrderBy(s => s.ExerciseType.Name)
+                .ToListAsync();
+
+            statistics = stats.Select(s => new StatisticsDTO
+            {
+                ExerciseTypeName = s.ExerciseType.Name,
+                TimesPerformed = s.TimesPerformed,
+                TotalRepetitions = s.TotalRepetitions,
+                AverageWeight = (decimal)s.AverageWeight,
+                MaxWeight = (decimal)s.MaxWeight
+            }).ToList();
+        }
+    }
+}
+

@@ -1,0 +1,54 @@
+@page "/exercise-types/create"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+<PageTitle>Dodaj typ ćwiczenia</PageTitle>
+
+<h1 class="title">Dodaj typ ćwiczenia</h1>
+
+    <EditForm Model="@exerciseType" OnValidSubmit="@HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="message is-danger" />
+
+    <div class="field">
+        <label class="label">Nazwa ćwiczenia</label>
+        <div class="control">
+            <InputText @bind-Value="exerciseType.Name" class="input" placeholder="Nazwa ćwiczenia" />
+            <ValidationMessage For="@(() => exerciseType.Name)" class="help is-danger" />
+        </div>
+        <p class="help">Wprowadź nazwę typu ćwiczenia (np. Przysiady, Wyciskanie na ławce)</p>
+    </div>
+
+    <div class="field">
+        <label class="label">Opis</label>
+        <div class="control">
+            <InputTextArea @bind-Value="exerciseType.Description" class="textarea" placeholder="Opis ćwiczenia" rows="4" />
+            <ValidationMessage For="@(() => exerciseType.Description)" class="help is-danger" />
+        </div>
+        <p class="help">Wprowadź opis typu ćwiczenia (opcjonalnie)</p>
+    </div>
+
+    <div class="field has-text-centered">
+        <div class="control">
+            <button type="submit" class="button is-success">Utwórz</button>
+            <a href="/exercise-types" class="button is-link">Powrót do listy</a>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private ExerciseType exerciseType = new();
+
+    private async Task HandleValidSubmit()
+    {
+        Context.Add(exerciseType);
+        await Context.SaveChangesAsync();
+        Navigation.NavigateTo("/exercise-types");
+    }
+}
+

@@ -1,0 +1,56 @@
+@page "/exercise-types/details/{Id:int}"
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Szczegóły typu ćwiczenia</PageTitle>
+
+<h1 class="title">Szczegóły typu ćwiczenia</h1>
+
+@if (exerciseType == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else
+{
+    <div>
+        <h4>Typ ćwiczenia</h4>
+        <hr />
+        <dl class="columns is-multiline">
+            <dt class="column is-2">Nazwa</dt>
+            <dd class="column is-10">@exerciseType.Name</dd>
+            <dt class="column is-2">Opis</dt>
+            <dd class="column is-10">@exerciseType.Description</dd>
+        </dl>
+    </div>
+    <div class="has-text-centered">
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <a href="/exercise-types/edit/@exerciseType.Id" class="button is-warning">Edytuj</a>
+            </Authorized>
+        </AuthorizeView>
+        <a href="/exercise-types" class="button is-link">Powrót do listy</a>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ExerciseTypeDTO? exerciseType;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var exerciseTypeEntity = await Context.ExerciseType.FindAsync(Id);
+        if (exerciseTypeEntity == null)
+        {
+            Navigation.NavigateTo("/exercise-types");
+        }
+        else
+        {
+            exerciseType = new ExerciseTypeDTO(exerciseTypeEntity);
+        }
+    }
+}
+

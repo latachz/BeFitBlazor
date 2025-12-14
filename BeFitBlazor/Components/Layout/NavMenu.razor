@@ -1,0 +1,75 @@
+﻿@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+<header>
+    <nav class="navbar is-primary">
+        <div class="container">
+            <div class="navbar-brand">
+                <a class="navbar-item" asp-area="" asp-controller="Home" asp-action="Index">BeFit</a>
+                <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu">
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                </a>
+            </div>
+            <div id="navbarMenu" class="navbar-menu">
+                <div class="navbar-start">
+                    <a class="navbar-item" href="/exercise-types">Typy ćwiczeń</a>
+                    <a class="navbar-item" href="/training-sessions">Moje sesje treningowe</a>
+                    <a class="navbar-item" href="/exercise-executions">Moje wykonane ćwiczenia</a>
+                    <a class="navbar-item" href="/statistics">Statystyki</a>
+                </div>
+                <div class="navbar-end">
+                    <AuthorizeView>
+                        <Authorized>
+                            <NavLink class="navbar-item" href="/Account/Manage">
+                                    @context.User.Identity?.Name
+                                </NavLink>
+                            <div class="navbar-item">
+                                <form action="/Account/Logout" method="post">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                                    <button type="submit" class="nav-link">
+                                        <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Wyloguj
+                                    </button>
+                                </form>
+                            </div>
+                        </Authorized>
+                        <NotAuthorized>
+                                <NavLink class="navbar-item" href="/Account/Register">
+                                    <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Zarejestruj
+                                </NavLink>
+                                <NavLink class="navbar-item" href="/Account/Login">
+                                    <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Zaloguj
+                                </NavLink>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+    </nav>
+</header>
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}
+

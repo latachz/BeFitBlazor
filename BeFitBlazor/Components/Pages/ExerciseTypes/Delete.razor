@@ -1,0 +1,69 @@
+@page "/exercise-types/delete/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+<PageTitle>Usuń typ ćwiczenia</PageTitle>
+
+<h1 class="title">Usuń</h1>
+
+@if (exerciseType == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else
+{
+    <div class="message is-danger">
+        <div class="message-header">
+            <p>Czy na pewno chcesz usunąć ten typ ćwiczenia?</p>
+        </div>
+        <div class="message-body">
+            <dl class="columns is-multiline">
+                <dt class="column is-2">Nazwa</dt>
+                <dd class="column is-10">@exerciseType.Name</dd>
+                <dt class="column is-2">Opis</dt>
+                <dd class="column is-10">@exerciseType.Description</dd>
+            </dl>
+            <form method="post" @onsubmit="HandleDelete" class="has-text-centered">
+                <input type="hidden" value="@exerciseType.Id" />
+                <button type="submit" class="button is-danger">Usuń</button>
+                <a href="/exercise-types" class="button is-link">Powrót do listy</a>
+            </form>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ExerciseType? exerciseTypeEntity;
+    private ExerciseTypeDTO? exerciseType;
+
+    protected override async Task OnInitializedAsync()
+    {
+        exerciseTypeEntity = await Context.ExerciseType.FindAsync(Id);
+        if (exerciseTypeEntity == null)
+        {
+            Navigation.NavigateTo("/exercise-types");
+        }
+        else
+        {
+            exerciseType = new ExerciseTypeDTO(exerciseTypeEntity);
+        }
+    }
+
+    private async Task HandleDelete()
+    {
+        if (exerciseTypeEntity != null)
+        {
+            Context.ExerciseType.Remove(exerciseTypeEntity);
+            await Context.SaveChangesAsync();
+        }
+        Navigation.NavigateTo("/exercise-types");
+    }
+}
+

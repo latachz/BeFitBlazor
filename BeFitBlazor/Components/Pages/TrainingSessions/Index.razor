@@ -1,0 +1,84 @@
+@page "/training-sessions"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@inject ApplicationDbContext Context
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Moje sesje treningowe</PageTitle>
+
+<h1 class="title">Moje sesje treningowe</h1>
+
+<p class="has-text-right">
+    <a href="/training-sessions/create" class="button is-link">Dodaj nową sesję treningową</a>
+</p>
+
+@if (sessions == null)
+{
+    <p><em>Ładowanie...</em></p>
+}
+else if (!sessions.Any())
+{
+    <p><em>Brak sesji treningowych.</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Czas rozpoczęcia</th>
+                <th>Czas zakończenia</th>
+                <th>Czas trwania</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in sessions)
+            {
+                <tr>
+                    <td>@item.Date.ToString("yyyy-MM-dd")</td>
+                    <td>@item.StartTime.ToString(@"hh\:mm")</td>
+                    <td>@item.EndTime.ToString(@"hh\:mm")</td>
+                    <td>@item.Duration.ToString(@"hh\:mm")</td>
+                    <td>
+                        <a href="/training-sessions/details/@item.Id" class="button is-primary">Szczegóły</a>
+                        <a href="/training-sessions/edit/@item.Id" class="button is-warning">Edytuj</a>
+                        <a href="/training-sessions/delete/@item.Id" class="button is-danger">Usuń</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<TrainingSessionDTO>? sessions;
+    private string? userId;
+
+    async Task<string?> getUserId()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return userId;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        userId = await getUserId();
+
+        if (userId != null)
+        {
+            sessions = await Context.TrainingSession
+                .Include(t => t.User)
+                .Where(t => t.UserId == userId)
+                .OrderByDescending(t => t.Date)
+                .Select(t => new TrainingSessionDTO(t))
+                .ToListAsync();
+        }
+    }
+}
+
