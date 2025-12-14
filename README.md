@@ -1,4 +1,4 @@
-# BeFit - Blazor
+<img width="1481" height="524" alt="image" src="https://github.com/user-attachments/assets/0fd1a13b-4e0e-4192-a6f6-650d0639c21f" /># BeFit - Blazor
 
 ## Overview
 
@@ -24,3 +24,9 @@ dotnet watch run
 ``` 
 
 5. Open the app at http://localhost:5276/
+
+<img width="1481" height="524" alt="image" src="https://github.com/user-attachments/assets/a4bdbfeb-074b-46f1-b848-eda812b44950" />
+<img width="1484" height="517" alt="image" src="https://github.com/user-attachments/assets/7cda482e-9ed1-4311-afa8-5719b6b787ff" />
+<img width="1482" height="798" alt="image" src="https://github.com/user-attachments/assets/e0810a08-cdfb-452d-86bf-9983d44b3d75" />
+<img width="1482" height="489" alt="image" src="https://github.com/user-attachments/assets/2ed67329-732b-49c1-8504-040910c570c2" />
+
